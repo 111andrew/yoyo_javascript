@@ -25,7 +25,10 @@ const ball = {
     color : "WHITE",
     total_energy : 0,
     kinetic_energy : 0,
-    potential_energy : 0
+    potential_energy : 0,
+    rotational_kinetic : 0,
+    inner_radius : 5,
+    moment_of_inertia : 1,
 }
 
 // Rope object
@@ -86,60 +89,64 @@ function textUpdate(){
 
 }
 
+function spring_yoyo_update(){
+
+    // update distance and angles
+    var distance_to_user = Math.sqrt(Math.pow(ball.x-user.x,2) + Math.pow(ball.y-user.y,2));
+    var vector_to_user_x = - (user.x - ball.x) / distance_to_user;
+    var vector_to_user_y = - (user.y - ball.y) / distance_to_user;
+
+    var sign_user_to_yoyo_x = Math.sign(user.x - ball.x);
+    var sign_user_to_yoyo_y = Math.sign(user.y - ball.y);
+
+    var theta = Math.abs(Math.atan(vector_to_user_x / vector_to_user_y));
+
+    // update energies
+    var velocity_mag = Math.sqrt(Math.pow(ball.velocityX,2) + Math.pow(ball.velocityY,2));
+
+    ball.kinetic_energy = 0.5 * mass * Math.pow(velocity_mag,2);
+    ball.potential_energy = mass * gravity * ball.y; // need to figure out reference
+    ball.total_energy = ball.kinetic_energy + ball.potential_energy;
+
+    display_1_param = distance_to_user;
+
+    if (distance_to_user < yoyo_string_len){
+      var force_x = 0;
+      var force_y = -gravity * mass;
+    }
+
+    else{
+
+      // rope.tension_force = ball.kinetic_energy / mass;
+      // try modeling the string as a string
+      rope.tension_force = Math.abs(distance_to_user - rope.free_length) * rope.stiffness;
+
+      rope.tension_force_x = rope.tension_force * Math.sin(theta) * sign_user_to_yoyo_x;
+      rope.tension_force_y = rope.tension_force * Math.cos(theta) * sign_user_to_yoyo_y;
+
+      var force_x = rope.tension_force_x;
+      var force_y = rope.tension_force_y - gravity * mass;
+
+    }
+
+    ball.accelX = force_x / mass;
+    ball.accelY = force_y / mass;
+
+    ball.velocityX += ball.accelX * dt;
+    ball.velocityY += ball.accelY * dt;
+
+    ball.x += ball.velocityX * dt; // direction of canvas
+    ball.y += ball.velocityY * dt;
+
+}
+
 
 function update(){
   // time peorid passes is 1/50 seconds per update
   // ball.x = user.x;
   // ball.y = user.y;
   textUpdate();
-
-
-  // update distance and angles
-  var distance_to_user = Math.sqrt(Math.pow(ball.x-user.x,2) + Math.pow(ball.y-user.y,2));
-  var vector_to_user_x = - (user.x - ball.x) / distance_to_user;
-  var vector_to_user_y = - (user.y - ball.y) / distance_to_user;
-
-  var sign_user_to_yoyo_x = Math.sign(user.x - ball.x);
-  var sign_user_to_yoyo_y = Math.sign(user.y - ball.y);
-
-  var theta = Math.abs(Math.tan(vector_to_user_x / vector_to_user_y));
-
-  // update energies
-  var velocity_mag = Math.sqrt(Math.pow(ball.velocityX,2) + Math.pow(ball.velocityY,2));
-
-  ball.kinetic_energy = 0.5 * mass * Math.pow(velocity_mag,2);
-  ball.potential_energy = mass * gravity * ball.y; // need to figure out reference
-  ball.total_energy = ball.kinetic_energy + ball.potential_energy;
-
-  display_1_param = distance_to_user;
-
-  if (distance_to_user < yoyo_string_len){
-    var force_x = 0;
-    var force_y = -gravity * mass;
-  }
-
-  else{
-
-    // rope.tension_force = ball.kinetic_energy / mass;
-    // try modeling the string as a string
-    rope.tension_force = Math.abs(distance_to_user - rope.free_length) * rope.stiffness;
-
-    rope.tension_force_x = rope.tension_force * Math.sin(theta) * sign_user_to_yoyo_x;
-    rope.tension_force_y = rope.tension_force * Math.cos(theta) * sign_user_to_yoyo_y;
-
-    var force_x = rope.tension_force_x;
-    var force_y = rope.tension_force_y - gravity * mass;
-
-  }
-
-  ball.accelX = force_x / mass;
-  ball.accelY = force_y / mass;
-
-  ball.velocityX += ball.accelX * dt;
-  ball.velocityY += ball.accelY * dt;
-
-  ball.x += ball.velocityX * dt; // direction of canvas
-  ball.y += ball.velocityY * dt;
+  spring_yoyo_update();
 
 }
 
@@ -163,8 +170,24 @@ function game(){
     render();
 }
 
-// number of frames per second
-let framePerSecond = 1 / dt;
+// not working yet
+function timer(count_time){
+  render();
+  while(count_time >= 0){
+    new Promise(r => setTimeout(r, 2000));
+    drawText(count_time, canvas.width/2, canvas.height/5);
+    count_time -= 1;
+}
+}
 
-//call the game function 50 times every 1 Sec
-let loop = setInterval(game,1000/framePerSecond);
+function game_start(){
+
+  // number of frames per second
+  let framePerSecond = 1 / dt;
+
+  //call the game function 50 times every 1 Sec
+  let loop = setInterval(game,1000/framePerSecond);
+
+}
+render();
+setTimeout(game_start,5000);
